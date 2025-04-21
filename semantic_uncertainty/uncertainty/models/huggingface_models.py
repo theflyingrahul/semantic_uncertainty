@@ -149,6 +149,7 @@ class HuggingfaceModel(BaseModel):
             else:
                 raise ValueError
 
+        
         elif 'mistral' in model_name.lower():
 
             if model_name.endswith('-8bit'):
@@ -162,7 +163,17 @@ class HuggingfaceModel(BaseModel):
             else:
                 kwargs = {}
 
-            model_id = f'mistralai/{model_name}'
+            # Hotpatch for bitext fine-tuned model.
+
+            kwargs = {'quantization_config': BitsAndBytesConfig(
+                    load_in_4bit=True,)}
+            
+            if '/' not in model_name:
+                model_id = f'mistralai/{model_name}'
+            else:
+                model_id = model_name
+            #################
+
             self.tokenizer = AutoTokenizer.from_pretrained(
                 model_id, device_map='auto', token_type_ids=None,
                 clean_up_tokenization_spaces=False)
@@ -170,7 +181,7 @@ class HuggingfaceModel(BaseModel):
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_id,
                 device_map='auto',
-                max_memory={0: '80GIB'},
+                max_memory={0: '16GIB'},
                 **kwargs,
             )
 
