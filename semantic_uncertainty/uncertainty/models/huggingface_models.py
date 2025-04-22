@@ -279,16 +279,21 @@ class HuggingfaceModel(BaseModel):
         if full_answer.startswith(input_data):
             input_data_offset = len(input_data)
         else:
-#             Okay, so figured out what is going on here. The model makes minor adjustments in the input query. Look at this:
-#             Full answer: Answer the following question in a single brief but complete sentence.
-#             Question: where to cancel the newsletter subscription? (notice no space between `subscription` and `?`)
-#             Answer: You can cancel your newsletter subscription by contacting the publisher or the email address associated with your subscription.
-#             Input data: Answer the following question in a single brief but complete sentence.
-#             Question: where to cancel the newsletter subscription ? (notice the extra space added between `subscription` and `?`)
+            # Okay, so figured out what is going on here. The model makes minor adjustments in the input query while responding. Look at this (Seen in responses from LLaMA 3.2 1B/3B Instruct models):
+            # Full answer: Answer the following question in a single brief but complete sentence.
+            # Question: where to cancel the newsletter subscription? (notice no space between `subscription` and `?`)
+            # Answer: You can cancel your newsletter subscription by contacting the publisher or the email address associated with your subscription.
+            # Input data: Answer the following question in a single brief but complete sentence.
+            # Question: where to cancel the newsletter subscription ? (notice the extra space added between `subscription` and `?`)
 
-# TODO: patch this bug! Maybe try some tolerance for the offset? Skip the data point?
-            print("ValueError: Full answer:", full_answer, "Input data:", input_data)
-            raise ValueError('Have not tested this in a while.')
+            # TODO: patch this bug! Maybe try some tolerance for the offset? Skip the data point?
+            
+            # Hotpatching the above mentioned bug. Quick shabby fix: For LLaMA/Mistral/Falcon models, just offset by len(input_data). I believe the input prompt is always generated at the beginning of the output. Approximation, but can probably live with it.
+            if 'llama' in self.model_name.lower() or 'falcon' in self.model_name or 'mistral' in self.model_name.lower():
+                logging.warning(f'Hotpatching input offset: generated_answer: {full_answer} input: {input_data}')
+                input_data_offset = len(input_data)
+
+            else: raise ValueError('Have not tested this in a while.')
 
         # Remove input from answer.
         answer = full_answer[input_data_offset:]
