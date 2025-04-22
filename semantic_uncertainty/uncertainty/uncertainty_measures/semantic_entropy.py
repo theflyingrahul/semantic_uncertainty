@@ -24,10 +24,24 @@ class BaseEntailment:
 
 
 class EntailmentDeberta(BaseEntailment):
-    def __init__(self):
-        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/deberta-v2-xlarge-mnli")
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            "microsoft/deberta-v2-xlarge-mnli").to(DEVICE)
+    def __init__(self, second_gpu=False):
+        if second_gpu:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                "microsoft/deberta-v2-xlarge-mnli",
+                device_map='auto',
+                max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                attn_implementation="eager"
+            )
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                "microsoft/deberta-v2-xlarge-mnli",
+                device_map='auto',
+                max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                attn_implementation="eager"
+            )
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained("microsoft/deberta-v2-xlarge-mnli")
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                "microsoft/deberta-v2-xlarge-mnli").to(DEVICE)
 
     def check_implication(self, text1, text2, *args, **kwargs):
         inputs = self.tokenizer(text1, text2, return_tensors="pt").to(DEVICE)
@@ -138,11 +152,11 @@ class EntailmentGPT4Turbo(EntailmentGPT4):
 
 class EntailmentLlama(EntailmentLLM):
 
-    def __init__(self, entailment_cache_id, entailment_cache_only, name):
+    def __init__(self, entailment_cache_id, entailment_cache_only, name, second_gpu):
         super().__init__(entailment_cache_id, entailment_cache_only)
         self.name = name
         self.model = HuggingfaceModel(
-            name, stop_sequences='default', max_new_tokens=30)
+            name, stop_sequences='default', max_new_tokens=30, second_gpu=second_gpu)
 
     def equivalence_prompt(self, text1, text2, question):
 

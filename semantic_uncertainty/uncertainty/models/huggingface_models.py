@@ -85,7 +85,7 @@ def remove_split_layer(device_map_in):
 class HuggingfaceModel(BaseModel):
     """Hugging Face Model."""
 
-    def __init__(self, model_name, stop_sequences=None, max_new_tokens=None):
+    def __init__(self, model_name, stop_sequences=None, max_new_tokens=None, second_gpu=False):
         if max_new_tokens is None:
             raise
         self.max_new_tokens = max_new_tokens
@@ -107,6 +107,11 @@ class HuggingfaceModel(BaseModel):
             if 'Llama-2' in model_name:
                 base = 'meta-llama'
                 model_name = model_name + '-hf'
+            # hotpatch for Llama-3.2 Q8
+            elif 'Llama-3.2' in model_name:
+                base = 'meta-llama'
+                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
+                eightbit = True                
             else:
                 base = 'huggyllama'
 
@@ -120,7 +125,7 @@ class HuggingfaceModel(BaseModel):
             if ('7b' in model_name or '13b' in model_name) or eightbit:
                 self.model = AutoModelForCausalLM.from_pretrained(
                     f"{base}/{model_name}", device_map="auto",
-                    max_memory={0: '80GIB'}, **kwargs,)
+                    max_memory={0: '16GIB'}, **kwargs,)
 
             elif llama2_70b or llama65b:
                 path = snapshot_download(
@@ -164,7 +169,7 @@ class HuggingfaceModel(BaseModel):
                 kwargs = {}
 
             # Hotpatch for bitext fine-tuned model.
-
+            # OVERRIDE: Quantize to Q4 for all Mistral models
             kwargs = {'quantization_config': BitsAndBytesConfig(
                     load_in_4bit=True,)}
             
@@ -174,16 +179,34 @@ class HuggingfaceModel(BaseModel):
                 model_id = model_name
             #################
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_id, device_map='auto', token_type_ids=None,
-                clean_up_tokenization_spaces=False)
+            if not second_gpu: # Load model on primary GPU by default
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_id, device_map='auto', token_type_ids=None,
+                    clean_up_tokenization_spaces=False)
 
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                device_map='auto',
-                max_memory={0: '16GIB'},
-                **kwargs,
-            )
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    device_map='auto',
+                    max_memory={0: '16GIB'},
+                    **kwargs,
+                )
+            
+            else:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_id, 
+                    device_map='auto',
+                    max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                    attn_implementation="eager",
+                    token_type_ids=None,
+                    clean_up_tokenization_spaces=False)
+
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    device_map='auto',
+                    max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                    attn_implementation="eager",
+                    **kwargs,
+                )
 
         elif 'falcon' in model_name:
             model_id = f'tiiuae/{model_name}'

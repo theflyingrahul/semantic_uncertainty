@@ -99,7 +99,7 @@ def main(args):
     if args.compute_predictive_entropy:
         logging.info('Beginning loading for entailment model.')
         if args.entailment_model == 'deberta':
-            entailment_model = EntailmentDeberta()
+            entailment_model = EntailmentDeberta(args.second_gpu)
         elif args.entailment_model == 'gpt-4':
             entailment_model = EntailmentGPT4(args.entailment_cache_id, args.entailment_cache_only)
         elif args.entailment_model == 'gpt-3.5':
@@ -107,7 +107,7 @@ def main(args):
         elif args.entailment_model == 'gpt-4-turbo':
             entailment_model = EntailmentGPT4Turbo(args.entailment_cache_id, args.entailment_cache_only)
         elif 'llama' in args.entailment_model.lower():
-            entailment_model = EntailmentLlama(args.entailment_cache_id, args.entailment_cache_only, args.entailment_model)
+            entailment_model = EntailmentLlama(args.entailment_cache_id, args.entailment_cache_only, args.entailment_model, args.second_gpu)
         else:
             raise ValueError
         logging.info('Entailment model loading complete.')
@@ -145,7 +145,7 @@ def main(args):
             brief_always=old_exp['args'].brief_always and old_exp['args'].enable_brief,
             make_prompt=utils.get_make_prompt(old_exp['args']),
             num_generations=num_gen,
-            metric=utils.get_metric(old_exp['args'].metric))
+            metric=utils.get_metric(old_exp['args']))
         del p_true_responses
         wandb.config.update(
             {'p_true_num_fewshot': len_p_true}, allow_val_change=True)
@@ -159,7 +159,7 @@ def main(args):
     if args.recompute_accuracy:
         # This is usually not enabled.
         logging.warning('Recompute accuracy enabled. This does not apply to precomputed p_true!')
-        metric = utils.get_metric(args.metric)
+        metric = utils.get_metric(args)
 
     # Restore outputs from `generate_answrs.py` run.
     result_dict_pickle = restore('uncertainty_measures.pkl')

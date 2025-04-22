@@ -48,7 +48,7 @@ def main(args):
     logging.info('Finished wandb init.')
 
     # Get accuracy metric.
-    metric = utils.get_metric(args.metric)
+    metric = utils.get_metric(args)
 
     # Load dataset.
     train_dataset, validation_dataset = load_ds(

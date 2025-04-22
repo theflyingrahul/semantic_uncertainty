@@ -20,6 +20,12 @@ def get_parser(stages=['generate', 'compute']):
     entity = os.getenv('WANDB_SEM_UNC_ENTITY', None)
 
     parser = argparse.ArgumentParser()
+
+    # add additional argument for offloading/sharding model on 1660S
+    parser.add_argument(
+        "--second_gpu", action=argparse.BooleanOptionalAction, default=False,
+        help="Use the low-power secondary GPU(s).")
+    
     parser.add_argument(
         "--debug", action=argparse.BooleanOptionalAction, default=False,
         help="Keep default wandb clean.")
@@ -27,8 +33,15 @@ def get_parser(stages=['generate', 'compute']):
     parser.add_argument('--random_seed', type=int, default=10)
     parser.add_argument(
         "--metric", type=str, default="squad",
-        choices=['squad', 'llm', 'llm_gpt-3.5', 'llm_gpt-4'],
+        choices=['squad', 'llm', 'llm_gpt-3.5', 'llm_gpt-4', 'custom_llm'],
         help="Metric to assign accuracy to generations.")
+    
+    # add additional argument for custom metric llm support
+    parser.add_argument(
+        "--custom_metric_model_name", type=str, default="None",
+        choices=['Llama-3.2-3B-Instruct'],
+        help="Use custom model to assign accuracy metric to generations.")
+    
     parser.add_argument(
         "--compute_accuracy_at_all_temps",
         action=argparse.BooleanOptionalAction, default=True,
@@ -242,6 +255,24 @@ def model_based_metric(predicted_answer, example, model):
 def llm_metric(predicted_answer, example, model):
     return model_based_metric(predicted_answer, example, model)
 
+# Hotpatch: Custom LLM metric support
+
+def get_custom_llm_metric(args):
+    mn = args.custom_metric_model_name
+    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+        model = HuggingfaceModel(
+            mn,
+            stop_sequences='default',
+            max_new_tokens=args.model_max_new_tokens,
+            second_gpu=args.second_gpu)
+    else:
+        raise ValueError(f'Unknown model_name `{mn}`.')
+    
+    def custom_llm_metric(predicted_answer, example, model):
+        return model_based_metric(predicted_answer, example, model)
+    
+    return custom_llm_metric
+#######################################
 
 def get_gpt_metric(metric_name):
 
@@ -276,8 +307,10 @@ def init_model(args):
     mn = args.model_name
     if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
         model = HuggingfaceModel(
-            mn, stop_sequences='default',
-            max_new_tokens=args.model_max_new_tokens)
+            mn,
+            stop_sequences='default',
+            max_new_tokens=args.model_max_new_tokens,
+            second_gpu=args.second_gpu)
     else:
         raise ValueError(f'Unknown model_name `{mn}`.')
     return model
@@ -303,7 +336,8 @@ def get_make_prompt(args):
     return make_prompt
 
 
-def get_metric(metric):
+def get_metric(args):
+    metric = args.metric
     if metric == 'squad':
 
         squad_metric = load("squad_v2")
@@ -330,6 +364,11 @@ def get_metric(metric):
         metric = get_gpt_metric(metric)
     elif metric == 'llm_gpt-4':
         metric = get_gpt_metric(metric)
+
+    # Hotpatch: Enable custom LLM support for Metric
+    elif metric == 'custom_llm':
+        metric = get_custom_llm_metric(args)
+
     else:
         raise ValueError
 
