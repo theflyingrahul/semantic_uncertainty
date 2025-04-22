@@ -279,6 +279,15 @@ class HuggingfaceModel(BaseModel):
         if full_answer.startswith(input_data):
             input_data_offset = len(input_data)
         else:
+#             Okay, so figured out what is going on here. The model makes minor adjustments in the input query. Look at this:
+#             Full answer: Answer the following question in a single brief but complete sentence.
+#             Question: where to cancel the newsletter subscription? (notice no space between `subscription` and `?`)
+#             Answer: You can cancel your newsletter subscription by contacting the publisher or the email address associated with your subscription.
+#             Input data: Answer the following question in a single brief but complete sentence.
+#             Question: where to cancel the newsletter subscription ? (notice the extra space added between `subscription` and `?`)
+
+# TODO: patch this bug! Maybe try some tolerance for the offset? Skip the data point?
+            print("ValueError: Full answer:", full_answer, "Input data:", input_data)
             raise ValueError('Have not tested this in a while.')
 
         # Remove input from answer.

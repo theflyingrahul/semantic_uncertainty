@@ -47,6 +47,8 @@ def main(args):
     )
     logging.info('Finished wandb init.')
 
+    print(wandb.run.dir)
+
     # Get accuracy metric.
     metric = utils.get_metric(args)
 
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     logging.info('Starting new run with args: %s', args)
 
     if unknown:
-        raise ValueError(f'Unkown args: {unknown}')
+        raise ValueError(f'Unknown args: {unknown}')
 
     if args.compute_uncertainties:
         args.assign_new_wandb_id = False
