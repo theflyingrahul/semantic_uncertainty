@@ -107,26 +107,49 @@ class HuggingfaceModel(BaseModel):
             if 'Llama-2' in model_name:
                 base = 'meta-llama'
                 model_name = model_name + '-hf'
-            # hotpatch for Llama-3.2 Q8
+                
+            # hotpatch for Llama-3.2: Q4 is the only config now: GPU-poor are we :(
             elif 'Llama-3.2' in model_name:
                 base = 'meta-llama'
-                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
-                eightbit = True                
+                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True,)}
+                fourbit = True
+
             else:
                 base = 'huggyllama'
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
+            if not second_gpu:
+                self.tokenizer = AutoTokenizer.from_pretrained(
                 f"{base}/{model_name}", device_map="auto",
                 token_type_ids=None)
+            
+                self.model = AutoModelForCausalLM.from_pretrained(
+                        f"{base}/{model_name}", device_map="auto",
+                        max_memory={0: '16GIB'}, **kwargs,)
+            else:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    f"{base}/{model_name}",
+                    device_map='auto',
+                    max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                    attn_implementation="eager",
+                    token_type_ids=None,
+                    clean_up_tokenization_spaces=False)
 
             llama65b = '65b' in model_name and base == 'huggyllama'
             llama2_70b = '70b' in model_name and base == 'meta-llama'
 
-            if ('7b' in model_name or '13b' in model_name) or eightbit:
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    f"{base}/{model_name}", device_map="auto",
-                    max_memory={0: '16GIB'}, **kwargs,)
-
+            if ('7b' in model_name or '13b' in model_name) or eightbit or fourbit:
+                if not second_gpu:
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        f"{base}/{model_name}", device_map="auto",
+                        max_memory={0: '16GIB'}, **kwargs,)
+                else:
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        f"{base}/{model_name}",
+                        device_map='auto',
+                        max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                        attn_implementation="eager",
+                        **kwargs,
+                    )
             elif llama2_70b or llama65b:
                 path = snapshot_download(
                     repo_id=f'{base}/{model_name}',
