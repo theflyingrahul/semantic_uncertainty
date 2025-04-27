@@ -2,6 +2,7 @@
 from collections import defaultdict
 import logging
 import os
+import shutil
 import pickle
 import numpy as np
 import wandb
@@ -56,8 +57,27 @@ def main(args):
         )
 
         def restore(filename):
-            old_run.file(filename).download(
-                replace=True, exist_ok=False, root=wandb.run.dir)
+            # old_run.file(filename).download(
+            #     replace=True, exist_ok=False, root=wandb.run.dir)
+            
+            # The pkl files are stored in an internal nested directory structure. We need to dynamically determine the internal dir structure and load the pkl file
+            # List all files to verify paths
+            print("Listing all files in run:")
+            for file in old_run.files():
+                print(file.name)
+
+            # Try to find and download the file
+            for file in old_run.files():
+                if file.name.endswith(filename):
+                    file.download(replace=True, exist_ok=False, root=wandb.run.dir)
+                    print(f"Downloaded: {file.name}")
+                    # Move it to root dir
+                    new_location = os.path.basename(file.name)  # just the filename
+                    shutil.move(file.name, wandb.run.dir)
+                    print(f"Moved to: {wandb.run.dir}")
+                    break
+            else:
+                print(f"File {filename} not found")
 
             class Restored:
                 name = f'{wandb.run.dir}/{filename}'

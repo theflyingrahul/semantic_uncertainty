@@ -111,8 +111,11 @@ class HuggingfaceModel(BaseModel):
             # hotpatch for Llama-3.2: Q4 is the only config now: GPU-poor are we :(
             elif 'Llama-3.2' in model_name:
                 base = 'meta-llama'
-                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True,)}
-                fourbit = True
+                # switch to Q8 temporarily, looks like I ran for few conditions without quantization. Affects results significantly.
+                # kwargs = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True,)}
+                # fourbit = True
+                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
+                eightbit = True
 
             else:
                 base = 'huggyllama'
@@ -147,7 +150,7 @@ class HuggingfaceModel(BaseModel):
                         f"{base}/{model_name}",
                         device_map='auto',
                         max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
-                        attn_implementation="eager",
+                        attn_implementation="eager", # disable flash attention (for GPUs older than Ampere)
                         **kwargs,
                     )
             elif llama2_70b or llama65b:
