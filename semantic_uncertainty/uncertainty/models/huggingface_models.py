@@ -132,7 +132,7 @@ class HuggingfaceModel(BaseModel):
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     f"{base}/{model_name}",
                     device_map='auto',
-                    max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                    max_memory={1: "6GB", 2: "6GB"},
                     attn_implementation="eager",
                     token_type_ids=None,
                     clean_up_tokenization_spaces=False)
@@ -149,7 +149,7 @@ class HuggingfaceModel(BaseModel):
                     self.model = AutoModelForCausalLM.from_pretrained(
                         f"{base}/{model_name}",
                         device_map='auto',
-                        max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                        max_memory={1: "6GB", 2: "6GB"},
                         attn_implementation="eager", # disable flash attention (for GPUs older than Ampere)
                         **kwargs,
                     )
@@ -221,7 +221,7 @@ class HuggingfaceModel(BaseModel):
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     model_id, 
                     device_map='auto',
-                    max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                    max_memory={1: "6GB", 2: "6GB"},
                     attn_implementation="eager",
                     token_type_ids=None,
                     clean_up_tokenization_spaces=False)
@@ -229,7 +229,7 @@ class HuggingfaceModel(BaseModel):
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_id,
                     device_map='auto',
-                    max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                    max_memory={1: "6GB", 2: "6GB"}, # do not specify max_memory for primary GPU 0; else it will be loaded on 0 (some 700-800MB)
                     attn_implementation="eager",
                     **kwargs,
                 )
