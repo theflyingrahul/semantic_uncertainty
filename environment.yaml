@@ -40,3 +40,5 @@ dependencies:
     - tenacity
     - sentencepiece
     - safetensors
+    - sentence_transformers
+    - hf_xet

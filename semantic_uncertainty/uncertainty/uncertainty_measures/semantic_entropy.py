@@ -128,7 +128,7 @@ class EntailmentGPT4(EntailmentLLM):
         prompt = f"""We are evaluating answers to the question \"{question}\"\n"""
         prompt += "Here are two possible answers:\n"
         prompt += f"Possible Answer 1: {text1}\nPossible Answer 2: {text2}\n"
-        prompt += "Does Possible Answer 1 semantically entail Possible Answer 2? Respond with entailment, contradiction, or neutral."""
+        prompt += "Does Possible Answer 1 semantically entail Possible Answer 2? Respond with `entailment`, `contradiction`, or `neutral`."""
 
         return prompt
 
@@ -163,7 +163,7 @@ class EntailmentLlama(EntailmentLLM):
         prompt = f"""We are evaluating answers to the question \"{question}\"\n"""
         prompt += "Here are two possible answers:\n"
         prompt += f"Possible Answer 1: {text1}\nPossible Answer 2: {text2}\n"
-        prompt += "Does Possible Answer 1 semantically entail Possible Answer 2? Respond only with entailment, contradiction, or neutral.\n"""
+        prompt += "Does Possible Answer 1 semantically entail Possible Answer 2? Respond only with `entailment`, `contradiction`, or `neutral`.\n"""
         prompt += "Response:"""
 
         return prompt
