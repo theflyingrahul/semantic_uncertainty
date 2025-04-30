@@ -21,6 +21,11 @@ def get_parser(stages=['generate', 'compute']):
 
     parser = argparse.ArgumentParser()
 
+    # add additional argument to use an alternative entailment prompt
+    parser.add_argument(
+        "--alt_entail_prompt", action=argparse.BooleanOptionalAction, default=False,
+        help="Use the alternative customer service entailment prompt.")
+
     # add additional argument for offloading/sharding model on 1660S
     parser.add_argument(
         "--second_gpu", action=argparse.BooleanOptionalAction, default=False,

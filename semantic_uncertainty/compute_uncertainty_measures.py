@@ -73,7 +73,7 @@ def main(args):
                     print(f"Downloaded: {file.name}")
                     # Move it to root dir
                     new_location = os.path.basename(file.name)  # just the filename
-                    shutil.move(file.name, wandb.run.dir)
+                    shutil.move(f"{wandb.run.dir}/{file.name}", wandb.run.dir)
                     print(f"Moved to: {wandb.run.dir}")
                     break
             else:
@@ -127,7 +127,7 @@ def main(args):
         elif args.entailment_model == 'gpt-4-turbo':
             entailment_model = EntailmentGPT4Turbo(args.entailment_cache_id, args.entailment_cache_only)
         elif 'llama' in args.entailment_model.lower():
-            entailment_model = EntailmentLlama(args.entailment_cache_id, args.entailment_cache_only, args.entailment_model, args.second_gpu)
+            entailment_model = EntailmentLlama(args.entailment_cache_id, args.entailment_cache_only, args.entailment_model, args.second_gpu, args.alt_entail_prompt)
         else:
             raise ValueError
         logging.info('Entailment model loading complete.')

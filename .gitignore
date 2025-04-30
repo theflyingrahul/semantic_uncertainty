@@ -137,5 +137,5 @@ dmypy.json
 .vscode
 
 #wandb logs
-rahul/
+rahul*/
 notebooks/

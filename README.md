@@ -18,6 +18,9 @@ This is a fork of the original repository with modifications to enable execution
 ### `--custom_metric_model_name`
 - Complements the `--metric=custom_llm` argument. Specify the model name here.
 
+### `--alt_entail_prompt`
+- Uses an alternative entailment prompt for use in context-specific entailment testing (customer service here). Works only with custom entailment LLMs.
+
 ## Running Independent Computations
 
 To compute uncertainty measures independently, use the following command:

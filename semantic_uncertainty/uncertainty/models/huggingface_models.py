@@ -114,7 +114,7 @@ class HuggingfaceModel(BaseModel):
                 # switch to Q8 temporarily, looks like I ran for few conditions without quantization. Affects results significantly.
                 # kwargs = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True,)}
                 # fourbit = True
-                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
+                kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True)}
                 eightbit = True
 
             else:
@@ -140,7 +140,7 @@ class HuggingfaceModel(BaseModel):
             llama65b = '65b' in model_name and base == 'huggyllama'
             llama2_70b = '70b' in model_name and base == 'meta-llama'
 
-            if ('7b' in model_name or '13b' in model_name) or eightbit or fourbit:
+            if ('7b' in model_name or '13b' in model_name) or eightbit:
                 if not second_gpu:
                     self.model = AutoModelForCausalLM.from_pretrained(
                         f"{base}/{model_name}", device_map="auto",

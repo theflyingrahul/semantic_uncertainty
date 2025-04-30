@@ -29,13 +29,13 @@ class EntailmentDeberta(BaseEntailment):
             self.tokenizer = AutoTokenizer.from_pretrained(
                 "microsoft/deberta-v2-xlarge-mnli",
                 device_map='auto',
-                max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                max_memory={1: "6GB", 2: "6GB"},
                 attn_implementation="eager"
             )
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 "microsoft/deberta-v2-xlarge-mnli",
                 device_map='auto',
-                max_memory={0: "0GB", 1: "6GB", 2: "6GB"},
+                max_memory={1: "6GB", 2: "6GB"},
                 attn_implementation="eager"
             )
         else:
@@ -152,15 +152,20 @@ class EntailmentGPT4Turbo(EntailmentGPT4):
 
 class EntailmentLlama(EntailmentLLM):
 
-    def __init__(self, entailment_cache_id, entailment_cache_only, name, second_gpu):
+    def __init__(self, entailment_cache_id, entailment_cache_only, name, second_gpu, alt_entail_prompt=False):
         super().__init__(entailment_cache_id, entailment_cache_only)
         self.name = name
+        self.alt_entail_prompt = alt_entail_prompt
         self.model = HuggingfaceModel(
             name, stop_sequences='default', max_new_tokens=30, second_gpu=second_gpu)
 
     def equivalence_prompt(self, text1, text2, question):
-
-        prompt = f"""We are evaluating answers to the question \"{question}\"\n"""
+        if self.alt_entail_prompt:
+            prompt = f"""We are evaluating responses from two customer service chatbots to a customer's question: `{question}`\n"""
+        else:
+            prompt = f"""We are evaluating answers to the question \"{question}\"\n"""
+        
+        # Continue with the rest of the prompt
         prompt += "Here are two possible answers:\n"
         prompt += f"Possible Answer 1: {text1}\nPossible Answer 2: {text2}\n"
         prompt += "Does Possible Answer 1 semantically entail Possible Answer 2? Respond only with `entailment`, `contradiction`, or `neutral`.\n"""
