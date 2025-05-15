@@ -49,6 +49,22 @@ python compute_uncertainty_measures.py \
          - Dissecting the generated `.pkl` files.
          - Analyzing stochasticity in outputs.
 
+## Install and configure accelerate/DeepSpeed for training
+Accelerate should be installed in conda? Check if it works
+
+# Use the latest version of hf-transformers
+Gemma 3 support is flaky. The visual stack in Gemma 3 (which is multi-modal) is unnecessary for our work. Text-only support is hotpatched in the latest version of hf-transformers.
+- Install as: `pip install --upgrade git+https://github.com/huggingface/transformers.git`
+- See: https://github.com/huggingface/transformers/issues/36683
+- See: https://github.com/huggingface/transformers/pull/36741
+
+## Hotfixes
+- Upgraded packages for Gemma 3 support
+     - Running torch v2.6.x on CUDA/NVCC 12.8 (instead of 11.8 from the Nature article).
+     - Running hf-transformers v4.52.x. 
+
 ## TODOs
 - Document the added model and dataset support.
 - Add an argument to configure VRAM limits for `--second_gpu`.
+- Implement DeepSpeed support.
+- Implement Flash Attention 2 support.

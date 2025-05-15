@@ -310,7 +310,7 @@ def get_reference(example):
 
 def init_model(args):
     mn = args.model_name
-    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+    if 'llama' in mn.lower() or 'falcon' in mn.lower() or 'mistral' in mn.lower() or 'gemma' in mn.lower():
         model = HuggingfaceModel(
             mn,
             stop_sequences='default',

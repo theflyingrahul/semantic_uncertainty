@@ -12,6 +12,7 @@ from transformers import AutoModelForCausalLM
 from transformers import BitsAndBytesConfig
 from transformers import StoppingCriteria
 from transformers import StoppingCriteriaList
+from transformers import Gemma3ForConditionalGeneration
 from huggingface_hub import snapshot_download
 
 
@@ -93,7 +94,38 @@ class HuggingfaceModel(BaseModel):
         if stop_sequences == 'default':
             stop_sequences = STOP_SEQUENCES
 
-        if 'llama' in model_name.lower():
+        if 'gemma' in model_name.lower():
+            kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
+            base, model_name = model_name.split('/')
+            if not second_gpu:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                f"{base}/{model_name}", device_map="auto")
+        
+                self.model = Gemma3ForConditionalGeneration.from_pretrained(
+                        f"{base}/{model_name}",
+                        # attn_implementation="flash_attention_2",
+                        torch_dtype=torch.bfloat16,
+                        device_map="auto",
+                        max_memory={0: '16GIB'}, 
+                        **kwargs
+                )
+            else:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    f"{base}/{model_name}",
+                    device_map='auto',
+                    max_memory={1: "6GB", 2: "6GB"},
+                    attn_implementation="eager")
+                
+                self.model = Gemma3ForConditionalGeneration.from_pretrained(
+                        f"{base}/{model_name}",
+                        torch_dtype=torch.bfloat16,
+                        device_map='auto',
+                        max_memory={1: "6GB", 2: "6GB"},
+                        attn_implementation="eager", # disable flash attention (for GPUs older than Ampere)
+                        **kwargs,
+                )
+
+        elif 'llama' in model_name.lower():
 
             if model_name.endswith('-8bit'):
                 kwargs = {'quantization_config': BitsAndBytesConfig(
@@ -128,10 +160,12 @@ class HuggingfaceModel(BaseModel):
                 self.tokenizer = AutoTokenizer.from_pretrained(
                 f"{base}/{model_name}", device_map="auto",
                 token_type_ids=None)
-            
-                self.model = AutoModelForCausalLM.from_pretrained(
-                        f"{base}/{model_name}", device_map="auto",
-                        max_memory={0: '16GIB'}, **kwargs,)
+
+                # Explains the weird VRAM consumption issue. Looks like the model is loaded twice in VRAM. Commenting this out for now.
+
+                # self.model = AutoModelForCausalLM.from_pretrained(
+                #         f"{base}/{model_name}", device_map="auto",
+                #         max_memory={0: '16GIB'}, **kwargs,)
             else:
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     f"{base}/{model_name}",
@@ -265,7 +299,7 @@ class HuggingfaceModel(BaseModel):
         # Implement prediction.
         inputs = self.tokenizer(input_data, return_tensors="pt").to("cuda")
 
-        if 'llama' in self.model_name.lower() or 'falcon' in self.model_name or 'mistral' in self.model_name.lower():
+        if 'llama' in self.model_name.lower() or 'falcon' in self.model_name or 'mistral' in self.model_name.lower() or 'gemma' in self.model_name.lower():
             if 'token_type_ids' in inputs:  # Some HF models have changed.
                 del inputs['token_type_ids']
             pad_token_id = self.tokenizer.eos_token_id
