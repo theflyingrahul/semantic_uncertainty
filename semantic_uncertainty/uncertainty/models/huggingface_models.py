@@ -108,8 +108,8 @@ class HuggingfaceModel(BaseModel):
                 base = 'meta-llama'
                 model_name = model_name + '-hf'
                 
-            # hotpatch for Llama-3.2: Q4 is the only config now: GPU-poor are we :(
-            elif 'Llama-3.2' in model_name:
+            # hotpatch for Llama-3.2: Q8 is the only config now: GPU-poor are we :(
+            elif 'llama-3.2' in model_name.lower():
                 base = 'meta-llama'
                 # switch to Q8 temporarily, looks like I ran for few conditions without quantization. Affects results significantly.
                 # kwargs = {'quantization_config': BitsAndBytesConfig(load_in_4bit=True,)}
@@ -119,6 +119,10 @@ class HuggingfaceModel(BaseModel):
 
             else:
                 base = 'huggyllama'
+
+            # if base is already in model_name
+            if '/' in model_name:
+                base, model_name = model_name.split('/')
 
             if not second_gpu:
                 self.tokenizer = AutoTokenizer.from_pretrained(
