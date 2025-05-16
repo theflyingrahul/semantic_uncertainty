@@ -19,6 +19,8 @@ from huggingface_hub import snapshot_download
 from uncertainty.models.base_model import BaseModel
 from uncertainty.models.base_model import STOP_SEQUENCES
 
+import numpy as np
+np.set_printoptions(legacy='1.25')
 
 class StoppingCriteriaSub(StoppingCriteria):
     """Stop generations when they match a particular text or token."""

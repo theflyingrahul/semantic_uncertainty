@@ -52,7 +52,7 @@ python compute_uncertainty_measures.py \
 ## Install and configure accelerate/DeepSpeed for training
 Accelerate should be installed in conda? Check if it works
 
-# Use the latest version of hf-transformers
+## Use the latest version of hf-transformers
 Gemma 3 support is flaky. The visual stack in Gemma 3 (which is multi-modal) is unnecessary for our work. Text-only support is hotpatched in the latest version of hf-transformers.
 - Install as: `pip install --upgrade git+https://github.com/huggingface/transformers.git`
 - See: https://github.com/huggingface/transformers/issues/36683
@@ -68,3 +68,4 @@ Gemma 3 support is flaky. The visual stack in Gemma 3 (which is multi-modal) is 
 - Add an argument to configure VRAM limits for `--second_gpu`.
 - Implement DeepSpeed support.
 - Implement Flash Attention 2 support.
+- Configure hf-accelerate.
