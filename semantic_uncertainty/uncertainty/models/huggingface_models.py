@@ -105,10 +105,10 @@ class HuggingfaceModel(BaseModel):
         
                 self.model = Gemma3ForConditionalGeneration.from_pretrained(
                         f"{base}/{model_name}",
-                        # attn_implementation="flash_attention_2",
+                        attn_implementation="eager",
                         torch_dtype=torch.bfloat16,
                         device_map="auto",
-                        max_memory={0: '16GIB'}, 
+                        max_memory={0: '16GIB'},
                         **kwargs
                 )
             else:
