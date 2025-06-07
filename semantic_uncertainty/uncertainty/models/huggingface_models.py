@@ -22,6 +22,10 @@ from uncertainty.models.base_model import STOP_SEQUENCES
 import numpy as np
 np.set_printoptions(legacy='1.25')
 
+import os
+# global_scratch = os.environ['GLOBALSCRATCH']
+# print(f"Global scratch: \n\t{global_scratch}")
+
 class StoppingCriteriaSub(StoppingCriteria):
     """Stop generations when they match a particular text or token."""
     def __init__(self, stops, tokenizer, match_on='text', initial_length=None):
@@ -84,6 +88,8 @@ def remove_split_layer(device_map_in):
 
     return device_map
 
+# attn_implementation = attn_implementation
+attn_implementation = "flash_attention_2" # Use "flash_attention_2" when running on Ampere or newer GPU
 
 class HuggingfaceModel(BaseModel):
     """Hugging Face Model."""
@@ -97,33 +103,47 @@ class HuggingfaceModel(BaseModel):
             stop_sequences = STOP_SEQUENCES
 
         if 'gemma' in model_name.lower():
-            kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
+            # Check if GPU benefits from bfloat16
+            if torch.cuda.get_device_capability()[0] >= 8:
+                torch_dtype = torch.bfloat16
+            else:
+                torch_dtype = torch.float16
+            
             base, model_name = model_name.split('/')
+
+            # running locally
+            # if base == "theflyingrahul":
+            #     base = global_scratch
+            
+            kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
             if not second_gpu:
                 self.tokenizer = AutoTokenizer.from_pretrained(
                 f"{base}/{model_name}", device_map="auto")
         
                 self.model = Gemma3ForConditionalGeneration.from_pretrained(
                         f"{base}/{model_name}",
-                        attn_implementation="eager",
-                        torch_dtype=torch.bfloat16,
+                        attn_implementation=attn_implementation,
+                        torch_dtype=torch_dtype,
                         device_map="auto",
-                        max_memory={0: '16GIB'},
+                        # max_memory={0: '16GIB'},
                         **kwargs
                 )
+            
+            # Adapt this later to second GPU
             else:
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     f"{base}/{model_name}",
                     device_map='auto',
                     max_memory={1: "6GB", 2: "6GB"},
-                    attn_implementation="eager")
+                    attn_implementation=attn_implementation
+                )
                 
                 self.model = Gemma3ForConditionalGeneration.from_pretrained(
                         f"{base}/{model_name}",
                         torch_dtype=torch.bfloat16,
                         device_map='auto',
                         max_memory={1: "6GB", 2: "6GB"},
-                        attn_implementation="eager", # disable flash attention (for GPUs older than Ampere)
+                        attn_implementation=attn_implementation
                         **kwargs,
                 )
 
@@ -173,7 +193,7 @@ class HuggingfaceModel(BaseModel):
                     f"{base}/{model_name}",
                     device_map='auto',
                     max_memory={1: "6GB", 2: "6GB"},
-                    attn_implementation="eager",
+                    attn_implementation=attn_implementation,
                     token_type_ids=None,
                     clean_up_tokenization_spaces=False)
 
@@ -184,13 +204,14 @@ class HuggingfaceModel(BaseModel):
                 if not second_gpu:
                     self.model = AutoModelForCausalLM.from_pretrained(
                         f"{base}/{model_name}", device_map="auto",
-                        max_memory={0: '16GIB'}, **kwargs,)
+                        # max_memory={0: '16GIB'},
+                        **kwargs,)
                 else:
                     self.model = AutoModelForCausalLM.from_pretrained(
                         f"{base}/{model_name}",
                         device_map='auto',
                         max_memory={1: "6GB", 2: "6GB"},
-                        attn_implementation="eager", # disable flash attention (for GPUs older than Ampere)
+                        attn_implementation=attn_implementation,
                         **kwargs,
                     )
             elif llama2_70b or llama65b:
@@ -235,9 +256,9 @@ class HuggingfaceModel(BaseModel):
                 kwargs = {}
 
             # Hotpatch for bitext fine-tuned model.
-            # OVERRIDE: Quantize to Q4 for all Mistral models
+            # OVERRIDE: Quantize to Q8 for all Mistral models
             kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_4bit=True,)}
+                    load_in_8bit=True,)}
             
             if '/' not in model_name:
                 model_id = f'mistralai/{model_name}'
@@ -253,7 +274,7 @@ class HuggingfaceModel(BaseModel):
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_id,
                     device_map='auto',
-                    max_memory={0: '16GIB'},
+                    # max_memory={0: '16GIB'},
                     **kwargs,
                 )
             
@@ -262,7 +283,7 @@ class HuggingfaceModel(BaseModel):
                     model_id, 
                     device_map='auto',
                     max_memory={1: "6GB", 2: "6GB"},
-                    attn_implementation="eager",
+                    attn_implementation=attn_implementation,
                     token_type_ids=None,
                     clean_up_tokenization_spaces=False)
 
@@ -270,7 +291,7 @@ class HuggingfaceModel(BaseModel):
                     model_id,
                     device_map='auto',
                     max_memory={1: "6GB", 2: "6GB"}, # do not specify max_memory for primary GPU 0; else it will be loaded on 0 (some 700-800MB)
-                    attn_implementation="eager",
+                    attn_implementation=attn_implementation,
                     **kwargs,
                 )
 

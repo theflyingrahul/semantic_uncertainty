@@ -61,7 +61,13 @@ Gemma 3 support is flaky. The visual stack in Gemma 3 (which is multi-modal) is 
 ## Hotfixes
 - Upgraded packages for Gemma 3 support
      - Running torch v2.6.x on CUDA/NVCC 12.8 (instead of 11.8 from the Nature article).
-     - Running hf-transformers v4.52.x. 
+     - Running hf-transformers v4.52.x.
+
+## Other notes
+- Build flash_attn:
+     - MAKEFLAGS="-j$(nproc)" pip install flash_attn --no-build-isolation --use-pep517 --no-cache-dir
+- Some blocks to accommodate CECI Lyra HPCC (like $GLOBALSCRATCH) will be present: need to refactor this and add it as a command-line argument
+- Second GPU implementation is incomplete/not-verified for Gemma models since moved to Lyra
 
 ## TODOs
 - Document the added model and dataset support.
