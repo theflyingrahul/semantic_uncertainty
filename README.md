@@ -65,9 +65,10 @@ Gemma 3 support is flaky. The visual stack in Gemma 3 (which is multi-modal) is 
 
 ## Other notes
 - Build flash_attn:
-     - MAKEFLAGS="-j$(nproc)" pip install flash_attn --no-build-isolation --use-pep517 --no-cache-dir
-- Some blocks to accommodate CECI Lyra HPCC (like $GLOBALSCRATCH) will be present: need to refactor this and add it as a command-line argument
-- Second GPU implementation is incomplete/not-verified for Gemma models since moved to Lyra
+     - `MAKEFLAGS="-j$(nproc)" pip install flash_attn --no-build-isolation --use-pep517 --no-cache-dir`
+     - Flash Attention is a little stupid. Sometimes it works, sometimes it doesn't! Especially on Lyra. Need to debug this further.
+- Some blocks to accommodate CECI Lyra HPCC (like $GLOBALSCRATCH) will be present: need to refactor this and add it as a command-line argument.
+- Second GPU implementation is incomplete/not-verified for Gemma models since moved to Lyra.
 
 ## TODOs
 - Document the added model and dataset support.
