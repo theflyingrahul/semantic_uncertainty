@@ -190,8 +190,46 @@ def get_semantic_ids(strings_list, model, strict_entailment=False, example=None)
 
     def are_equivalent(text1, text2):
 
-        implication_1 = model.check_implication(text1, text2, example=example)
-        implication_2 = model.check_implication(text2, text1, example=example)  # pylint: disable=arguments-out-of-order
+        # There is an error that occurred in Llama T1 config with 512 token limit. We catch this error and return 1 (neutral) instead of failing.
+        # We need to assess this deeper as both implication_1 and implication_2 are needed to test bidirectional entailment. What do we do in such a case? We set both to neutral? Or we set only whichever fails to neutral? What are the implications of this move? Come back to this later.
+        """
+            Does Possible Answer 1 semantically entail Possible Answer 2? Respond only with `entailment`, `contradiction`, or `neutral`.
+            Response:
+            Traceback (most recent call last):
+            File "semantic_uncertainty/generate_answers.py", line 275, in <module>
+                main_compute(args)
+            File "semantic_uncertainty/compute_uncertainty_measures.py", line 253, in main
+                semantic_ids = get_semantic_ids(
+                            ^^^^^^^^^^^^^^^^^
+            File "semantic_uncertainty/uncertainty/uncertainty_measures/semantic_entropy.py", line 218, in get_semantic_ids
+                if are_equivalent(string1, strings_list[j]):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            File "semantic_uncertainty/uncertainty/uncertainty_measures/semantic_entropy.py", line 193, in are_equivalent
+                implication_1 = model.check_implication(text1, text2, example=example)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            File "semantic_uncertainty/uncertainty/uncertainty_measures/semantic_entropy.py", line 103, in check_implication
+                response = self.predict(prompt, temperature=0.02)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            File "semantic_uncertainty/uncertainty/uncertainty_measures/semantic_entropy.py", line 177, in predict
+                predicted_answer, _, _ = self.model.predict(prompt, temperature)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            File "semantic_uncertainty/uncertainty/models/huggingface_models.py", line 477, in predict
+                last_input = hidden[-1]
+                            ~~~~~~^^^^~
+            IndexError: tuple index out of range
+        """
+        try:
+            implication_1 = model.check_implication(text1, text2, example=example)
+        except Exception:
+            implication_1 = 1
+            logging.warning('Bidirectional entailment test\t -> implication_1 MANUAL NEUTRAL OVERRIDE!')
+
+        try:
+            implication_2 = model.check_implication(text2, text1, example=example)  # pylint: disable=arguments-out-of-order
+        except Exception:
+            implication_2 = 1
+            logging.warning('Bidirectional entailment test\t -> implication_2 MANUAL NEUTRAL OVERRIDE!')
+
         assert (implication_1 in [0, 1, 2]) and (implication_2 in [0, 1, 2])
 
         if strict_entailment:

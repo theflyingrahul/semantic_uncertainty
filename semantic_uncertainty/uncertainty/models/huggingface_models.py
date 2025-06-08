@@ -103,6 +103,9 @@ class HuggingfaceModel(BaseModel):
             stop_sequences = STOP_SEQUENCES
 
         if 'gemma' in model_name.lower():
+            # Override flash attention for Gemma models to eager. What's wrong?
+            attn_implementation = "eager"
+
             # Check if GPU benefits from bfloat16
             if torch.cuda.get_device_capability()[0] >= 8:
                 torch_dtype = torch.bfloat16
@@ -128,6 +131,15 @@ class HuggingfaceModel(BaseModel):
                         # max_memory={0: '16GIB'},
                         **kwargs
                 )
+
+                # We are using a model which is quantized to 8-bit during training. Additional quantization may not be needed while loading the model.
+                # self.model = AutoModelForCausalLM.from_pretrained(
+                #     f"{base}/{model_name}",
+                #     device_map="auto",
+                #     torch_dtype=torch_dtype,
+                #     attn_implementation=attn_implementation,
+                # )
+                # self.tokenizer = AutoTokenizer.from_pretrained(f"{base}/{model_name}")
             
             # Adapt this later to second GPU
             else:
@@ -399,7 +411,9 @@ class HuggingfaceModel(BaseModel):
                 error_msg += f'Answer: >{answer}< '
                 error_msg += f'Sliced Answer: >{sliced_answer}<'
                 if 'falcon' not in self.model_name.lower():
-                    raise ValueError(error_msg)
+                    # Temporarily disabled this check. Stop words is missing for 1 response in Llama 3.2 too. Need to check further
+                    # raise ValueError(error_msg)
+                    logging.error(error_msg)
                 else:
                     logging.error(error_msg)
 

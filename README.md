@@ -69,6 +69,11 @@ Gemma 3 support is flaky. The visual stack in Gemma 3 (which is multi-modal) is 
      - Flash Attention is a little stupid. Sometimes it works, sometimes it doesn't! Especially on Lyra. Need to debug this further.
 - Some blocks to accommodate CECI Lyra HPCC (like $GLOBALSCRATCH) will be present: need to refactor this and add it as a command-line argument.
 - Second GPU implementation is incomplete/not-verified for Gemma models since moved to Lyra.
+- We have overridden attention implementation to eager for Gemma 3. Flash Attention seems to be problematic in Gemma.
+
+## Some observations
+- Redo llm check keeps appearing on the fine-tuned variant of Llama and Mistral.
+- Inferencing is 6-10x slower on the fine-tuned models. Why? How do we speed up?
 
 ## TODOs
 - Document the added model and dataset support.
