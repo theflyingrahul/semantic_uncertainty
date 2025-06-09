@@ -3,6 +3,7 @@ import copy
 import logging
 from collections import Counter
 import torch
+import difflib
 
 import accelerate
 
@@ -25,6 +26,15 @@ np.set_printoptions(legacy='1.25')
 import os
 # global_scratch = os.environ['GLOBALSCRATCH']
 # print(f"Global scratch: \n\t{global_scratch}")
+
+def fuzzy_input_offset(input_data, generated_answer, threshold=0.9):
+    matcher = difflib.SequenceMatcher(None, input_data, generated_answer)
+    match = matcher.find_longest_match(0, len(input_data), 0, len(generated_answer))
+    match_level = match.size / len(input_data)
+    logging.info(f'Fuzzy matching: match_level: {match_level}, match_size: {match.size}')
+    if match_level >= threshold:
+        return match.size
+    return 0  # Fallback to crude approximation?
 
 class StoppingCriteriaSub(StoppingCriteria):
     """Stop generations when they match a particular text or token."""
@@ -121,7 +131,9 @@ class HuggingfaceModel(BaseModel):
             kwargs = {'quantization_config': BitsAndBytesConfig(load_in_8bit=True,)}
             if not second_gpu:
                 self.tokenizer = AutoTokenizer.from_pretrained(
-                f"{base}/{model_name}", device_map="auto")
+                    f"{base}/{model_name}",
+                    device_map="auto"
+                )
         
                 self.model = Gemma3ForConditionalGeneration.from_pretrained(
                         f"{base}/{model_name}",
@@ -131,15 +143,6 @@ class HuggingfaceModel(BaseModel):
                         # max_memory={0: '16GIB'},
                         **kwargs
                 )
-
-                # We are using a model which is quantized to 8-bit during training. Additional quantization may not be needed while loading the model.
-                # self.model = AutoModelForCausalLM.from_pretrained(
-                #     f"{base}/{model_name}",
-                #     device_map="auto",
-                #     torch_dtype=torch_dtype,
-                #     attn_implementation=attn_implementation,
-                # )
-                # self.tokenizer = AutoTokenizer.from_pretrained(f"{base}/{model_name}")
             
             # Adapt this later to second GPU
             else:
@@ -378,6 +381,7 @@ class HuggingfaceModel(BaseModel):
         if full_answer.startswith(input_data):
             input_data_offset = len(input_data)
         else:
+            logging.warn(f'Plain offsetting FAILED!')
             # Okay, so figured out what is going on here. The model makes minor adjustments in the input query while responding. Look at this (Seen in responses from LLaMA 3.2 1B/3B Instruct models):
             # Full answer: Answer the following question in a single brief but complete sentence.
             # Question: where to cancel the newsletter subscription? (notice no space between `subscription` and `?`)
@@ -387,10 +391,25 @@ class HuggingfaceModel(BaseModel):
 
             # TODO: patch this bug! Maybe try some tolerance for the offset? Skip the data point?
             
-            # Hotpatching the above mentioned bug. Quick shabby fix: For LLaMA/Mistral/Falcon models, just offset by len(input_data). I believe the input prompt is always generated at the beginning of the output. Approximation, but can probably live with it.
             if 'llama' in self.model_name.lower() or 'falcon' in self.model_name or 'mistral' in self.model_name.lower():
-                logging.warning(f'Hotpatching input offset: generated_answer: {full_answer} input: {input_data}')
-                input_data_offset = len(input_data)
+                # first we search for "assistant=" in the full_answer and then offset everything before that.
+                try:
+                    if 'assistant=' in full_answer:
+                        logging.info('Found "assistant=" in full_answer.')
+                        input_data_offset = len(full_answer.split('assistant=')[0]) + len('assistant=')
+                    else:
+                        raise ValueError('No "assistant=" found in full_answer.')
+                except Exception as e:
+                    logging.error(f'Error finding input offset: {e}')
+                    logging.warning(f'Hotpatching input offset: generated_answer: {full_answer}\ninput: {input_data}')
+                    # Use fuzzy matching to find the offset.
+                    logging.warning('Trying fuzzy matching for input offset.')
+                    input_data_offset = fuzzy_input_offset(input_data, full_answer)
+                    if input_data_offset == 0:
+                        # Hotpatching the above mentioned bug. Quick shabby fix: For LLaMA/Mistral/Falcon models, just offset by len(input_data). I believe the input prompt is always generated at the beginning of the output. Approximation, but can probably live with it.
+                        logging.warning('Fuzzy matching failed, using len(input_data) as offset.')
+                        input_data_offset = len(input_data)
+                logging.info(f'Offset: {input_data_offset}')
 
             else: raise ValueError('Have not tested this in a while.')
 
@@ -474,6 +493,7 @@ class HuggingfaceModel(BaseModel):
                 )
             last_input = hidden[-1]
         else:
+            # print(f'len_hidden: {len(hidden)}\nn_generated: {n_generated}')
             last_input = hidden[n_generated - 1]
 
         # Then access last layer for input

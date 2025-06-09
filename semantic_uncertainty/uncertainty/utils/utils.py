@@ -221,20 +221,37 @@ def model_based_metric(predicted_answer, example, model):
     else:
         raise ValueError
 
-    prompt = f'We are assessing the quality of answers to the following question: {example["question"]}\n'
-    if len(correct_answers) == 1:
-        prompt += f"The expected answer is: {correct_answers[0]}.\n"
-    else:
-        prompt += f"The following are expected answers to this question: {correct_answers}.\n"
+    # we are customizing this prompt for Llama 3.2. Results are unreliable for the fine-tuned variants of mistral and llama.
+    # prompt = f'<|start_header_id|>system<|end_header_id|>We are assessing the quality of answers to a question. Respond with exactly one word -- either `yes` or `no`. Do not explain your answer. Do not write anything else.'
+    # prompt += f'<|eot_id|><|start_header_id|>user<|end_header_id|>The question is:\n```{example["question"]}```\n'
+    # if len(correct_answers) == 1:
+    #     prompt += f"The expected answer is: \n```{correct_answers[0]}```\n"
+    # else:
+    #     prompt += f"The following are expected answers to this question: \n```{correct_answers}```\n"
 
-    prompt += f"The proposed answer is: {predicted_answer}\n"
+    # prompt += f"The proposed answer is: \n```{predicted_answer}```\n"
+
+    # if len(correct_answers) == 1:
+    #     prompt += "Within the context of the question, does the proposed answer mean the same as the expected answer?"
+    # else:
+    #     prompt += "Within the context of the question, does the proposed answer mean the same as any of the expected answers?"
+
+    # prompt += " Respond with exactly one word -- either `yes` or `no`.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
+
+    prompt = f'We are assessing the quality of answers to the following question: `{example["question"]}`\n'
+    if len(correct_answers) == 1:
+        prompt += f"The expected answer is: \n`{correct_answers[0]}`\n"
+    else:
+        prompt += f"The following are expected answers to this question: \n```\n{correct_answers}\n```\n"
+
+    prompt += f"The proposed answer is: `{predicted_answer}`\n"
 
     if len(correct_answers) == 1:
         prompt += "Within the context of the question, does the proposed answer mean the same as the expected answer?"
     else:
         prompt += "Within the context of the question, does the proposed answer mean the same as any of the expected answers?"
 
-    prompt += " Respond only with yes or no.\nResponse:"
+    prompt += " Respond only with `yes` or `no`.\nResponse:"
 
     if 'gpt' in model.model_name.lower():
         predicted_answer = model.predict(prompt, 0.01)
@@ -246,7 +263,7 @@ def model_based_metric(predicted_answer, example, model):
     elif 'no' in predicted_answer.lower():
         return 0.0
     else:
-        logging.warning('Redo llm check.')
+        logging.warning(f'Redo llm check. LLM prompt: {prompt}\nLLM predicted answer: {predicted_answer}')
         predicted_answer, _, _ = model.predict(prompt, 1)
         if 'yes' in predicted_answer.lower():
             return 1.0
@@ -258,13 +275,14 @@ def model_based_metric(predicted_answer, example, model):
 
 
 def llm_metric(predicted_answer, example, model):
+    print(f'Using LLM metric: {model.model_name}')
     return model_based_metric(predicted_answer, example, model)
 
 # Hotpatch: Custom LLM metric support
 
 def get_custom_llm_metric(args):
     mn = args.custom_metric_model_name
-    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+    if 'llama' in mn.lower() or 'falcon' in mn.lower() or 'mistral' in mn.lower():
         model = HuggingfaceModel(
             mn,
             stop_sequences='default',
@@ -273,7 +291,8 @@ def get_custom_llm_metric(args):
     else:
         raise ValueError(f'Unknown model_name `{mn}`.')
     
-    def custom_llm_metric(predicted_answer, example, model):
+    def custom_llm_metric(predicted_answer, example, *_): # we ignore the default model passed: the third argument
+        logging.info(f'Using custom LLM metric model: {model.model_name}')
         return model_based_metric(predicted_answer, example, model)
     
     return custom_llm_metric
@@ -294,6 +313,7 @@ def get_gpt_metric(metric_name):
 
     def gpt_metric(predicted_answer, example, model):
         del model
+        logging.info(f'Using GPT metric')
         return model_based_metric(predicted_answer, example, gpt_model)
 
     return gpt_metric

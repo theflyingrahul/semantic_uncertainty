@@ -1,22 +1,35 @@
 #!/bin/bash
 
-# MODEL_ID="theflyingrahul/Mistral-7B-Instruct-v0.2-bitext-cs-q8"
-# MODEL_ID="Mistral-7B-Instruct-v0.2"
-MODEL_ID="theflyingrahul/Llama-3.2-3B-Instruct-bitext-cs-q8"
-# MODEL_ID="Llama-3.2-3B-Instruct"
-# MODEL_ID="google/gemma-3-4b-it"
-# MODEL_ID="theflyingrahul/gemma-3-4b-it-bitext-cs-q8"
+if [ -z "$1" ]; then
+  echo "Error: Temperature argument is required."
+  echo "Usage: $0 <temperature>"
+  exit 1
+fi
 
-# MODEL_TINY="mistralft"
-# MODEL_TINY="mistral"
-MODEL_TINY="llamaft"
-# MODEL_TINY="llama"
-# MODEL_TINY="gemma"
-# MODEL_TINY="gemmaft"
+TEMP=$1
 
-TEMPERATURES=(0.1 0.3 0.5 0.7 1)
+MODEL_IDS=(
+  "theflyingrahul/Mistral-7B-Instruct-v0.2-bitext-cs-q8"
+  "Mistral-7B-Instruct-v0.2"
+  "theflyingrahul/Llama-3.2-3B-Instruct-bitext-cs-q8"
+  "Llama-3.2-3B-Instruct"
+  "google/gemma-3-4b-it"
+  "theflyingrahul/gemma-3-4b-it-bitext-cs-q8"
+)
 
-for TEMP in "${TEMPERATURES[@]}"; do
+MODEL_TINYS=(
+  "mistralft"
+  "mistral"
+  "llamaft"
+  "llama"
+  "gemma"
+  "gemmaft"
+)
+
+for i in "${!MODEL_IDS[@]}"; do
+  MODEL_ID="${MODEL_IDS[$i]}"
+  MODEL_TINY="${MODEL_TINYS[$i]}"
+  
   echo "Submitting: MODEL_ID=$MODEL_ID, TEMPERATURE=$TEMP"
   
   sbatch --job-name=${MODEL_TINY}_fullSE_t${TEMP} \
