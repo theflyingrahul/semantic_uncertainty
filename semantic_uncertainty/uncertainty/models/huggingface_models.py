@@ -392,18 +392,19 @@ class HuggingfaceModel(BaseModel):
             # TODO: patch this bug! Maybe try some tolerance for the offset? Skip the data point?
             
             if 'llama' in self.model_name.lower() or 'falcon' in self.model_name or 'mistral' in self.model_name.lower():
-                # first we search for "assistant=" or "Response:" or "Response" in the full_answer and then offset everything before that.
+                # first we search for "Response:" or "Answer:" (with \n first: more precise, then without) or "assistant=" in the full_answer and then offset everything before that.
                 try:
                     flip = 0
-                    phrases = ['Response:', 'Response', 'Answer:' 'assistant=']
+                    phrases = ['\nResponse:', '\nAnswer:', 'Response:', 'Answer:', 'assistant=']
                     for phrase in phrases:
                         if phrase in full_answer:
-                            logging.info(f'Found {phrase} in full_answer.')
-                            input_data_offset = len(full_answer.split(phrase)[0]) + len(phrase)
+                            last_index = full_answer.rfind(phrase)
+                            logging.info(f'Found {phrase.strip()} at index {last_index} in full_answer.')
+                            input_data_offset = last_index + len(phrase)
                             flip = 1
                             break
                     if flip == 0:
-                        raise ValueError('No "assistant=" found in full_answer.')
+                        raise ValueError('No matching phrase found in full_answer.')
                 except Exception as e:
                     logging.error(f'Error finding input offset: {e}')
                     logging.warning(f'Hotpatching input offset: generated_answer: {full_answer}\ninput: {input_data}')
