@@ -118,11 +118,27 @@ def load_ds(dataset_name, seed, add_options=None):
         train_dataset = [reformat(d) for d in train_dataset]
         validation_dataset = [reformat(d) for d in validation_dataset]
 
+    # Add theflyingrahul/summarized_bitext_customer_support
+    elif dataset_name == 'summarized_bitext_cs':
+        dataset = datasets.load_dataset('theflyingrahul/summarized_bitext_customer_support', data_files='summarized_bitext.csv')
+        # print(dataset)
+        dataset = dataset['train'].train_test_split(test_size=0.2, seed=seed)
+        train_dataset = dataset["train"]
+        validation_dataset = dataset["test"]
+        md5hash = lambda s: str(int(hashlib.md5(s.encode('utf-8')).hexdigest(), 16))
+
+        reformat = lambda x: {
+            'question': x['instruction'], 
+            'context': '',
+            'type': x['intent'],
+            'id': md5hash(str(x['instruction'])),
+            'answers': {'text': x['response_summarized']}}
+        
+        train_dataset = [reformat(d) for d in train_dataset]
+        validation_dataset = [reformat(d) for d in validation_dataset]
+
     else:
         raise ValueError
 
     # print(train_dataset, validation_dataset)
     return train_dataset, validation_dataset
-
-
-load_ds("bitext_cs", 112)

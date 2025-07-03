@@ -218,6 +218,12 @@ def get_semantic_ids(strings_list, model, strict_entailment=False, example=None)
                             ~~~~~~^^^^~
             IndexError: tuple index out of range
         """
+
+        # This is probably an input offsetting issue with Llama (3.2 3B Inst) models where it adds/removes characters arbitrarily from the input sequence.
+        # The new offsetting implementation hopefully should have fixed this issue.
+        # Try-Catch may no longer be needed.
+        # See: https://github.com/theflyingrahul/semantic_uncertainty/commit/f76f0f938c04615f1ba78050e3ec8586457b3440
+
         try:
             implication_1 = model.check_implication(text1, text2, example=example)
         except Exception:
